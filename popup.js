@@ -14,7 +14,16 @@ async function initPopup() {
       await chrome.tabs.sendMessage(tab.id, { action: 'clean' });
     } catch (err) {
       // occurs if the tab has no content script (e.g., not a LinkedIn page)
-      console.error('Could not send message', err);
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['contentScript.js'],
+        });
+        await chrome.tabs.sendMessage(tab.id, { action: 'clean' });
+      } catch (injectErr) {
+        msg.textContent = 'Unable to clean this page. Reload LinkedIn and try again.';
+        console.error('Could not send message', injectErr);
+      }
     }
   });
 }
