@@ -1,7 +1,3 @@
-function findEditor() {
-  return document.querySelector("div[role='textbox']");
-}
-
 function cleanText(text) {
   const lines = text.split(/\n/);
   const paragraphs = [];
@@ -21,28 +17,46 @@ function cleanText(text) {
   return paragraphs.join('\n\n');
 }
 
-function cleanEditor() {
-  const editor = findEditor();
-  if (!editor) {
-    alert('LinkedIn editor not found');
-    return;
-  }
-  const text = editor.innerText;
-  const cleaned = cleanText(text);
-  editor.innerText = cleaned;
 
-  // restore caret to end
-  editor.focus();
-  const range = document.createRange();
-  range.selectNodeContents(editor);
-  range.collapse(false);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
+function cleanFeedPost(element) {
+  const text = element.innerText;
+  const cleaned = cleanText(text);
+  if (cleaned !== text) {
+    element.innerText = cleaned;
+  }
 }
+
+function cleanFeed() {
+  const posts = document.querySelectorAll(
+    'div.feed-shared-update-v2__description span.break-words'
+  );
+  posts.forEach(cleanFeedPost);
+}
+
+function observeFeed() {
+  const selector = 'div.feed-shared-update-v2__description span.break-words';
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (node.matches && node.matches(selector)) {
+            cleanFeedPost(node);
+          }
+          if (node.querySelectorAll) {
+            node.querySelectorAll(selector).forEach(cleanFeedPost);
+          }
+        }
+      });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+cleanFeed();
+observeFeed();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'clean') {
-    cleanEditor();
+    cleanFeed();
   }
 });
